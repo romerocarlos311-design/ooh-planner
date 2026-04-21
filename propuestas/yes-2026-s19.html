@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>OOH Planner · Yogurt YES · Propuesta Semana 19</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --og-red:#e8002d; --og-dark:#1a1a1a; --og-mid:#2d2d2d;
+  --og-gray:#6b6b6b; --og-light:#f5f5f5; --og-border:#e0e0e0; --og-white:#fff;
+  --shadow:0 2px 12px rgba(0,0,0,.10); --shadow-lg:0 4px 24px rgba(0,0,0,.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--og-light);color:var(--og-dark);height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+
+#header{background:var(--og-dark);padding:0 18px;height:54px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4);z-index:1001;}
+.logo-area{display:flex;align-items:center;gap:14px;}
+.og-divider{width:1px;height:28px;background:rgba(255,255,255,.2);}
+.og-product{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);display:flex;flex-direction:column;}
+.og-product span{color:var(--og-red);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+.hbtn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);padding:6px 13px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
+.hbtn:hover{background:rgba(255,255,255,.2);}
+.hbtn.red{background:var(--og-red);border-color:var(--og-red);color:#fff;}
+
+#main{display:flex;flex:1;min-height:0;position:relative;}
+
+#sidebar{width:290px;flex-shrink:0;background:var(--og-white);border-right:1.5px solid var(--og-border);display:flex;flex-direction:column;z-index:100;overflow:hidden;transition:width .25s ease;}
+#sidebar.collapsed{width:0;border:none;}
+
+.sidebar-tabs{display:flex;border-bottom:2px solid var(--og-border);flex-shrink:0;}
+.stab{flex:1;padding:10px 4px;font-size:10px;font-weight:700;text-align:center;cursor:pointer;color:var(--og-gray);border-bottom:2.5px solid transparent;margin-bottom:-2px;transition:all .15s;user-select:none;letter-spacing:.3px;text-transform:uppercase;}
+.stab.active{color:var(--og-red);border-bottom-color:var(--og-red);}
+.sidebar-panel{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;}
+.sidebar-panel.active{display:flex;}
+
+.s-section{padding:14px 16px;border-bottom:1px solid var(--og-border);}
+.s-title{font-size:9px;font-weight:700;color:var(--og-gray);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:'Barlow',sans-serif;}
+
+/* Summary card */
+.summary-card{background:var(--og-dark);border-radius:10px;padding:14px;margin-bottom:12px;color:#fff;}
+.summary-card h3{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;font-family:'Barlow',sans-serif;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.s-metric{background:rgba(255,255,255,.08);border-radius:7px;padding:8px 10px;text-align:center;}
+.s-metric .val{font-size:17px;font-weight:800;font-family:'Barlow',sans-serif;color:#fff;}
+.s-metric .val.red{color:var(--og-red);}
+.s-metric .lbl{font-size:9px;color:rgba(255,255,255,.5);margin-top:2px;text-transform:uppercase;}
+.s-metric.full{grid-column:span 2;}
+
+/* Format blocks */
+.fmt-block{margin-bottom:8px;border:1.5px solid var(--og-border);border-radius:8px;overflow:hidden;}
+.fmt-header{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;background:var(--og-light);transition:background .15s;}
+.fmt-header:hover{background:#ececec;}
+.fmt-header-left{display:flex;align-items:center;gap:8px;}
+.fmt-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.fmt-label{font-size:12px;font-weight:700;color:var(--og-dark);}
+.fmt-count{font-size:10px;color:var(--og-gray);margin-left:2px;}
+.fmt-controls{display:flex;align-items:center;gap:8px;}
+.fmt-chevron{font-size:11px;color:var(--og-gray);transition:transform .2s;}
+.fmt-chevron.open{transform:rotate(180deg);}
+.toggle{width:34px;height:18px;background:#d1d5db;border-radius:9px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--og-red);}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.toggle.on::after{left:18px;}
+.fmt-list{display:none;max-height:180px;overflow-y:auto;border-top:1px solid var(--og-border);background:var(--og-white);}
+.fmt-list.open{display:block;}
+.fmt-item{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;cursor:pointer;font-size:11px;color:var(--og-dark);border-bottom:1px solid #f0f0f0;transition:background .1s;}
+.fmt-item:last-child{border:none;}
+.fmt-item:hover{background:var(--og-light);}
+.fmt-item input[type=checkbox]{accent-color:var(--og-red);width:14px;height:14px;flex-shrink:0;margin-top:2px;}
+.fmt-item-name{flex:1;line-height:1.35;}
+.fmt-item-sub{font-size:9px;color:var(--og-gray);margin-top:1px;}
+
+/* Context */
+.ctx-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.ctx-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:8px;border:1.5px solid var(--og-border);background:var(--og-light);font-size:10px;font-weight:700;color:var(--og-gray);cursor:pointer;transition:all .15s;text-align:center;text-transform:uppercase;letter-spacing:.3px;}
+.ctx-btn .ctx-icon{font-size:20px;}
+.ctx-btn.on{background:var(--og-dark);color:#fff;border-color:var(--og-dark);}
+.ctx-count{display:inline-block;background:var(--og-gray);color:#fff;border-radius:10px;padding:1px 6px;font-size:9px;min-width:18px;text-align:center;margin-top:2px;}
+.ctx-btn.on .ctx-count{background:var(--og-red);}
+
+/* Heatmap */
+.heatmap-block{background:var(--og-light);border:1.5px solid var(--og-border);border-radius:8px;padding:12px;}
+.heat-title{font-size:11px;font-weight:700;color:var(--og-dark);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.heat-times{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;display:none;}
+.heat-time{padding:4px 8px;border-radius:4px;border:1.5px solid var(--og-border);font-size:10px;font-weight:600;cursor:pointer;background:var(--og-white);color:var(--og-gray);}
+.heat-time.active{background:var(--og-red);border-color:var(--og-red);color:#fff;}
+
+/* Journey */
+.j-label{font-size:10px;font-weight:700;color:var(--og-gray);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px;}
+.j-input-wrap{position:relative;margin-bottom:10px;}
+.j-input{width:100%;padding:9px 36px 9px 12px;border:1.5px solid var(--og-border);border-radius:7px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--og-dark);outline:none;background:var(--og-light);}
+.j-input:focus{border-color:var(--og-red);background:#fff;}
+.j-pin-btn{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--og-gray);}
+.j-go{width:100%;padding:10px;background:var(--og-red);color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Barlow',sans-serif;transition:opacity .15s;margin-top:4px;letter-spacing:.3px;}
+.j-go:hover{opacity:.88;}
+.j-go:disabled{opacity:.4;cursor:not-allowed;}
+.j-clear{width:100%;padding:8px;background:none;color:var(--og-gray);border:1.5px solid var(--og-border);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;font-family:'DM Sans',sans-serif;}
+
+#journey-results{padding:12px 16px;display:none;flex-direction:column;gap:10px;}
+#journey-results.show{display:flex;}
+.j-summary{background:var(--og-dark);border-radius:10px;padding:12px 14px;color:#fff;}
+.j-summary h3{font-size:12px;font-weight:700;margin-bottom:8px;font-family:'Barlow',sans-serif;text-transform:uppercase;letter-spacing:.5px;}
+.j-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.j-metric{background:rgba(255,255,255,.08);border-radius:7px;padding:8px 10px;text-align:center;}
+.j-metric .val{font-size:18px;font-weight:800;font-family:'Barlow',sans-serif;color:#fff;}
+.j-metric .lbl{font-size:9px;color:rgba(255,255,255,.6);margin-top:2px;text-transform:uppercase;}
+.j-hits{display:flex;flex-direction:column;gap:5px;}
+.j-hit{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;border:1.5px solid var(--og-border);background:var(--og-white);cursor:pointer;transition:border-color .15s;}
+.j-hit:hover{border-color:var(--og-red);}
+.j-hit-icon{font-size:16px;flex-shrink:0;}
+.j-hit-info{flex:1;min-width:0;}
+.j-hit-name{font-size:11px;font-weight:700;color:var(--og-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.j-hit-dist{font-size:10px;color:var(--og-gray);}
+.j-hit-order{width:20px;height:20px;border-radius:50%;background:var(--og-red);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Barlow',sans-serif;}
+
+.stats-footer{padding:10px 16px;background:var(--og-light);border-top:1.5px solid var(--og-border);flex-shrink:0;display:flex;gap:14px;flex-wrap:wrap;}
+.sf-stat{font-size:10px;color:var(--og-gray);}
+.sf-stat b{color:var(--og-dark);font-weight:700;}
+
+#map-wrap{flex:1;position:relative;min-width:0;}
+#map{width:100%;height:100%;}
+
+#legend{position:absolute;bottom:20px;right:12px;z-index:500;background:var(--og-white);border:1.5px solid var(--og-border);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);min-width:155px;}
+#legend h3{font-size:9px;font-weight:700;color:var(--og-gray);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-family:'Barlow',sans-serif;}
+.leg{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px;}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+#pick-indicator{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:800;background:var(--og-dark);color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:var(--shadow);pointer-events:none;}
+
+#fab{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:600;background:var(--og-red);color:#fff;border:none;border-radius:30px;padding:12px 24px;font-size:13px;font-weight:700;font-family:'Barlow',sans-serif;cursor:pointer;box-shadow:0 4px 20px rgba(232,0,45,.4);display:none;align-items:center;gap:8px;white-space:nowrap;}
+
+#drawer{position:absolute;bottom:0;left:0;right:0;z-index:700;background:var(--og-white);border-radius:18px 18px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,.15);max-height:85vh;overflow:hidden;flex-direction:column;display:none;transform:translateY(100%);transition:transform .3s ease;}
+#drawer.open{transform:translateY(0);}
+.drawer-handle{width:36px;height:4px;background:var(--og-border);border-radius:2px;margin:10px auto 6px;}
+#drawer-close{position:absolute;top:10px;right:16px;background:none;border:none;font-size:20px;color:var(--og-gray);cursor:pointer;}
+.drawer-content{overflow-y:auto;flex:1;padding:0 16px 20px;}
+
+.leaflet-popup-content-wrapper{border-radius:10px!important;padding:0!important;overflow:hidden!important;box-shadow:var(--shadow-lg)!important;border:1.5px solid var(--og-border)!important;}
+.leaflet-popup-content{margin:0!important;}
+.leaflet-popup-tip-container{display:none;}
+.leaflet-popup-close-button{color:#fff!important;font-size:18px!important;top:7px!important;right:10px!important;z-index:10;}
+
+.suggestions{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--og-border);border-radius:8px;z-index:900;max-height:150px;overflow-y:auto;box-shadow:var(--shadow);display:none;}
+.sug-item{padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:1px solid #f0f0f0;}
+.sug-item:last-child{border:none;}
+.sug-item:hover{background:var(--og-light);}
+
+.ruta-toggle{display:flex;align-items:center;gap:7px;padding:5px 0;font-size:11px;font-weight:600;cursor:pointer;color:var(--og-dark);}
+.r-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+@media(max-width:768px){
+  #sidebar{display:none;}
+  #fab{display:flex;}
+  #drawer{display:flex;}
+  #legend{bottom:80px;right:10px;font-size:10px;}
+}
+@media(min-width:769px){
+  #fab{display:none!important;}
+  #drawer{display:none!important;}
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo-area">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" height="28" style="flex-shrink:0;">
+  <text y="48" font-family="Georgia,Times New Roman,serif" font-size="52" font-weight="bold" fill="#e8002d" letter-spacing="-1">Ogilvy</text>
+</svg>
+    <div class="og-divider"></div>
+    <div class="og-product">
+      <span>OOH Planner</span>
+      Yogurt YES · Propuesta Semana 19
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="hbtn" onclick="toggleSidebar()">&#9776; Panel</div>
+    <div class="hbtn red">&#128279; Compartir</div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="sidebar">
+    <div class="sidebar-tabs">
+      <div class="stab active" onclick="switchTab('resumen')">Resumen</div>
+      <div class="stab" onclick="switchTab('formatos')">Formatos</div>
+      <div class="stab" onclick="switchTab('contexto')">Contexto</div>
+      <div class="stab" onclick="switchTab('journey')">Journey</div>
+    </div>
+
+    <!-- TAB RESUMEN -->
+    <div class="sidebar-panel active" id="tab-resumen">
+      <div class="s-section">
+        <div class="summary-card">
+          <h3>&#128200; Resumen de propuesta</h3>
+          <div class="summary-grid">
+            <div class="s-metric full">
+              <div class="val">Yogurt YES</div>
+              <div class="lbl">Propuesta Semana 19</div>
+            </div>
+            <div class="s-metric">
+              <div class="val">54</div>
+              <div class="lbl">Ubicaciones</div>
+            </div>
+            <div class="s-metric">
+              <div class="val">4</div>
+              <div class="lbl">Semanas</div>
+            </div>
+            <div class="s-metric">
+              <div class="val red">26.8M</div>
+              <div class="lbl">Impresiones/mes</div>
+            </div>
+            <div class="s-metric">
+              <div class="val">$0</div>
+              <div class="lbl">Inversión total</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--og-gray);line-height:1.8;">
+          <b>Periodo:</b> 06/05/2026 – 30/05/2026<br>
+          <b>ID:</b> YES-2026-S19
+        </div>
+      </div>
+      <div class="s-section" style="flex:1;">
+        <div class="s-title">Formatos incluidos</div>
+        <div class="ruta-toggle"><div class="r-dot" style="background:#e05c00;"></div>Pantalla Digital <span style="margin-left:auto;color:var(--og-gray);font-size:10px;">(38)</span></div><div class="ruta-toggle"><div class="r-dot" style="background:#0369a1;"></div>Parada de Bus <span style="margin-left:auto;color:var(--og-gray);font-size:10px;">(16)</span></div>
+      </div>
+    </div>
+
+    <!-- TAB FORMATOS -->
+    <div class="sidebar-panel" id="tab-formatos">
+      <div class="s-section">
+        <div class="s-title">Tipos de formato</div>
+        <div id="fmt-blocks"></div>
+      </div>
+      <div class="s-section">
+        <div class="s-title">Back-Bus (Rutas)</div>
+        <div class="fmt-block">
+          <div class="fmt-header" onclick="toggleFmtBlock('rutas')">
+            <div class="fmt-header-left">
+              <div class="fmt-dot" style="background:#16a34a"></div>
+              <span class="fmt-label">Rutas de Bus</span>
+              <span class="fmt-count">(18)</span>
+            </div>
+            <div class="fmt-controls">
+              <div class="toggle on" onclick="event.stopPropagation();toggleAllRutas(this)"></div>
+              <span class="fmt-chevron" id="chev-rutas">&#9660;</span>
+            </div>
+          </div>
+          <div class="fmt-list" id="list-rutas"></div>
+        </div>
+      </div>
+      <div class="stats-footer">
+        <div class="sf-stat">Total: <b id="cnt-total">54</b> ubicaciones</div>
+      </div>
+    </div>
+
+    <!-- TAB CONTEXTO -->
+    <div class="sidebar-panel" id="tab-contexto">
+      <div class="s-section">
+        <div class="s-title">Puntos de interés</div>
+        <div class="ctx-grid">
+          <div class="ctx-btn" id="ctx-supermercados" onclick="toggleCtx('supermercados',this)"><span class="ctx-icon">&#127978;</span>Supermercados<span class="ctx-count" id="cc-supermercados">-</span></div>
+          <div class="ctx-btn" id="ctx-farmacias" onclick="toggleCtx('farmacias',this)"><span class="ctx-icon">&#128138;</span>Farmacias<span class="ctx-count" id="cc-farmacias">-</span></div>
+          <div class="ctx-btn" id="ctx-bancos" onclick="toggleCtx('bancos',this)"><span class="ctx-icon">&#127981;</span>Bancos<span class="ctx-count" id="cc-bancos">-</span></div>
+          <div class="ctx-btn" id="ctx-malls" onclick="toggleCtx('malls',this)"><span class="ctx-icon">&#128722;</span>C. Comerciales<span class="ctx-count" id="cc-malls">-</span></div>
+          <div class="ctx-btn" id="ctx-restaurantes" onclick="toggleCtx('restaurantes',this)"><span class="ctx-icon">&#127829;</span>Restaurantes<span class="ctx-count" id="cc-restaurantes">-</span></div>
+          <div class="ctx-btn" id="ctx-escuelas" onclick="toggleCtx('escuelas',this)"><span class="ctx-icon">&#127979;</span>Escuelas<span class="ctx-count" id="cc-escuelas">-</span></div>
+          <div class="ctx-btn" id="ctx-parques" onclick="toggleCtx('parques',this)"><span class="ctx-icon">&#127795;</span>Parques<span class="ctx-count" id="cc-parques">-</span></div>
+          <div class="ctx-btn" id="ctx-hospitales" onclick="toggleCtx('hospitales',this)"><span class="ctx-icon">&#127973;</span>Hospitales<span class="ctx-count" id="cc-hospitales">-</span></div>
+          <div class="ctx-btn" id="ctx-gasolineras" onclick="toggleCtx('gasolineras',this)"><span class="ctx-icon">&#9981;</span>Gasolineras<span class="ctx-count" id="cc-gasolineras">-</span></div>
+          <div class="ctx-btn" id="ctx-oficinas" onclick="toggleCtx('oficinas',this)"><span class="ctx-icon">&#127970;</span>Oficinas<span class="ctx-count" id="cc-oficinas">-</span></div>
+        </div>
+      </div>
+      <div class="s-section">
+        <div class="s-title">Radio de búsqueda</div>
+        <input type="range" id="ctx-radius" min="200" max="2000" value="500" step="100" style="width:100%;accent-color:var(--og-red);" oninput="document.getElementById('radius-label').textContent=this.value+'m'">
+        <div style="font-size:11px;color:var(--og-gray);margin-top:4px;">Radio: <b id="radius-label">500m</b></div>
+      </div>
+      <div class="s-section">
+        <div class="s-title">&#128293; Mapa de calor de tráfico</div>
+        <div class="heatmap-block">
+          <div class="heat-title"><span>&#128338;</span>Intensidad por hora<div class="toggle" id="tog-heat" onclick="toggleHeatmap(this)" style="margin-left:auto;"></div></div>
+          <div id="heat-times" class="heat-times">
+            <div class="heat-time" onclick="setHeatHour(6,this)">6am</div>
+            <div class="heat-time" onclick="setHeatHour(7,this)">7am</div>
+            <div class="heat-time active" onclick="setHeatHour(8,this)">8am</div>
+            <div class="heat-time" onclick="setHeatHour(12,this)">12pm</div>
+            <div class="heat-time" onclick="setHeatHour(17,this)">5pm</div>
+            <div class="heat-time" onclick="setHeatHour(18,this)">6pm</div>
+            <div class="heat-time" onclick="setHeatHour(19,this)">7pm</div>
+            <div class="heat-time" onclick="setHeatHour(22,this)">10pm</div>
+          </div>
+          <div style="font-size:10px;color:var(--og-gray);margin-top:8px;line-height:1.5;">Basado en patrones generales de tráfico vehicular en San Salvador.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB JOURNEY -->
+    <div class="sidebar-panel" id="tab-journey">
+      <div class="s-section">
+        <div class="s-title">Simular recorrido</div>
+        <div class="j-label">&#128308; Origen</div>
+        <div class="j-input-wrap">
+          <input class="j-input" id="j-origin" placeholder="Ej: Santa Tecla, El Salvador" oninput="geocodeSuggest(this,'origin-sug')" autocomplete="off"/>
+          <button class="j-pin-btn" onclick="startPicking('origin')" title="Marcar en mapa">&#128205;</button>
+          <div id="origin-sug" class="suggestions"></div>
+        </div>
+        <div class="j-label">&#128994; Destino</div>
+        <div class="j-input-wrap">
+          <input class="j-input" id="j-dest" placeholder="Ej: Zona Rosa, San Salvador" oninput="geocodeSuggest(this,'dest-sug')" autocomplete="off"/>
+          <button class="j-pin-btn" onclick="startPicking('dest')" title="Marcar en mapa">&#128205;</button>
+          <div id="dest-sug" class="suggestions"></div>
+        </div>
+        <button class="j-go" id="j-go-btn" onclick="calcJourney()" disabled>&#128694; Calcular Journey</button>
+        <button class="j-clear" onclick="clearJourney()">&#10006; Limpiar</button>
+      </div>
+      <div id="journey-results">
+        <div class="j-summary"><h3>&#127775; Resumen del Journey</h3><div class="j-metrics" id="j-metrics"></div></div>
+        <div style="padding:4px 16px 4px;"><div class="s-title">Impactos en ruta</div></div>
+        <div class="j-hits" id="j-hits-list" style="padding:0 14px 14px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="pick-indicator">Haz click en el mapa para marcar el punto</div>
+    <div id="legend">
+      <h3>Leyenda</h3>
+      <div id="legend-items"></div>
+      <div class="leg"><div class="leg-dot" style="background:#16a34a"></div>Back-Bus (ruta)</div>
+    </div>
+    <button id="fab" onclick="openDrawer()">&#9776; Panel</button>
+  </div>
+</div>
+
+<!-- MOBILE DRAWER -->
+<div id="drawer">
+  <div class="drawer-handle"></div>
+  <button id="drawer-close" onclick="closeDrawer()">&#10005;</button>
+  <div class="drawer-content">
+    <div style="display:flex;gap:6px;margin:8px 0 14px;">
+      <div class="stab active" style="flex:1;border:1.5px solid var(--og-border);border-radius:6px;padding:8px;" onclick="switchDrawerTab('dr')">Resumen</div>
+      <div class="stab" style="flex:1;border:1.5px solid var(--og-border);border-radius:6px;padding:8px;" onclick="switchDrawerTab('dc')">Contexto</div>
+      <div class="stab" style="flex:1;border:1.5px solid var(--og-border);border-radius:6px;padding:8px;" onclick="switchDrawerTab('dj')">Journey</div>
+    </div>
+    <div id="dr">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Yogurt YES · Propuesta Semana 19</div>
+      <div style="font-size:11px;color:var(--og-gray);">54 ubicaciones · 06/05/2026 – 30/05/2026</div>
+    </div>
+    <div id="dc" style="display:none;">
+      <div class="ctx-grid">
+        <div class="ctx-btn" onclick="toggleCtx('supermercados',this)"><span class="ctx-icon">&#127978;</span>Supermercados</div>
+        <div class="ctx-btn" onclick="toggleCtx('farmacias',this)"><span class="ctx-icon">&#128138;</span>Farmacias</div>
+        <div class="ctx-btn" onclick="toggleCtx('bancos',this)"><span class="ctx-icon">&#127981;</span>Bancos</div>
+        <div class="ctx-btn" onclick="toggleCtx('restaurantes',this)"><span class="ctx-icon">&#127829;</span>Restaurantes</div>
+        <div class="ctx-btn" onclick="toggleCtx('parques',this)"><span class="ctx-icon">&#127795;</span>Parques</div>
+        <div class="ctx-btn" onclick="toggleCtx('hospitales',this)"><span class="ctx-icon">&#127973;</span>Hospitales</div>
+      </div>
+    </div>
+    <div id="dj" style="display:none;">
+      <div class="j-label">&#128308; Origen</div>
+      <div class="j-input-wrap">
+        <input class="j-input" id="dj-origin" placeholder="Ej: Santa Tecla" oninput="geocodeSuggest(this,'dj-origin-sug')" autocomplete="off"/>
+        <button class="j-pin-btn" onclick="startPicking('origin');closeDrawer()">&#128205;</button>
+        <div id="dj-origin-sug" class="suggestions"></div>
+      </div>
+      <div class="j-label">&#128994; Destino</div>
+      <div class="j-input-wrap">
+        <input class="j-input" id="dj-dest" placeholder="Ej: Zona Rosa, San Salvador" oninput="geocodeSuggest(this,'dj-dest-sug')" autocomplete="off"/>
+        <button class="j-pin-btn" onclick="startPicking('dest');closeDrawer()">&#128205;</button>
+        <div id="dj-dest-sug" class="suggestions"></div>
+      </div>
+      <button class="j-go" onclick="syncMobileJourney();calcJourney();closeDrawer()">&#128694; Calcular Journey</button>
+      <button class="j-clear" onclick="clearJourney()">&#10006; Limpiar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+const OOH      = [{"codigo": "SVPD000043A", "nombre": "Av. Masferrer Norte hacia Redondel Luceiro", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Av. Masferrer Norte", "referencia": "Hacia Redondel Luceiro", "lat": 13.7121, "lng": -89.2308, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 811220, "alcance": 106860, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000044A", "nombre": "49 Av. Sur frente a Autocentro hacia Comalapa", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "49 Avenida Sur", "referencia": "Frente a Autocentro", "lat": 13.689, "lng": -89.235, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 542720, "alcance": 52220, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000035A", "nombre": "Blvd. de Los Héroes fte. China Wok", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. de Los Héroes", "referencia": "Frente a China Wok", "lat": 13.7102, "lng": -89.223, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 620370, "alcance": 51990, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000008A", "nombre": "San Miguel Av. Roosevelt 50 mts. Metrocentro", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Miguel", "direccion": "Av. Roosevelt", "referencia": "A 50 mts. de Metrocentro", "lat": 13.4833, "lng": -88.1833, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 753980, "alcance": 20020, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000042A", "nombre": "Carretera Panamericana Fte. Gran Vía", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Carretera Panamericana", "referencia": "Frente a Gran Vía", "lat": 13.667, "lng": -89.268, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 1250000, "alcance": 142060, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000028A", "nombre": "Santa Ana Av. Independencia acera Metrocentro", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Santa Ana", "direccion": "Av. Independencia", "referencia": "Acera Metrocentro", "lat": 13.9952, "lng": -89.5584, "ancho": "960", "alto": "360", "unidad": "px", "impactos": 922800, "alcance": 47330, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000016A", "nombre": "Blvd. Constitución hacia Redondel", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Constitución", "referencia": "Hacia Redondel", "lat": 13.72, "lng": -89.205, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 700700, "alcance": 58900, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000020A", "nombre": "Blvd. Los Próceres hacia Monumento Hermano Lejano", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Los Próceres", "referencia": "Hacia Monumento Hermano Lejano", "lat": 13.698, "lng": -89.242, "ancho": "1560", "alto": "320", "unidad": "px", "impactos": 855120, "alcance": 66380, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000015A", "nombre": "Blvd. Los Próceres hacia Blvd. Monseñor Romero", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Los Próceres", "referencia": "Hacia Blvd. Monseñor Romero", "lat": 13.696, "lng": -89.24, "ancho": "1560", "alto": "320", "unidad": "px", "impactos": 905770, "alcance": 67730, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000038A", "nombre": "Carretera Comalapa hacia Hermano Lejano", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Carretera Comalapa", "referencia": "Hacia Hermano Lejano", "lat": 13.683, "lng": -89.238, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 788260, "alcance": 64090, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000034A", "nombre": "CC El Paseo hacia Salvador del Mundo", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "CC El Paseo", "referencia": "Hacia Salvador del Mundo", "lat": 13.703, "lng": -89.238, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 701850, "alcance": 59000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000033A", "nombre": "CC El Paseo hacia Redondel Masferrer", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "CC El Paseo", "referencia": "Hacia Redondel Masferrer", "lat": 13.704, "lng": -89.236, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 644340, "alcance": 57220, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000023A", "nombre": "75 Av. Norte Colonia Escalón", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "75 Avenida Norte", "referencia": "Colonia Escalón", "lat": 13.709, "lng": -89.231, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 680000, "alcance": 55000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000030A", "nombre": "Fte. Plaza Merliot hacia Santa Tecla", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Santa Tecla", "direccion": "Carretera Panamericana", "referencia": "Frente a Plaza Merliot", "lat": 13.673, "lng": -89.28, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 590000, "alcance": 48000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000029A", "nombre": "Soyapango Blvd. del Ejército hacia Plaza Mundo", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Soyapango", "direccion": "Blvd. del Ejército Nacional", "referencia": "Hacia Plaza Mundo", "lat": 13.71, "lng": -89.158, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 670000, "alcance": 53000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000021A", "nombre": "Calle Chiltiupan hacia Redondel Platillo", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Calle Chiltiupan", "referencia": "Hacia Redondel Platillo", "lat": 13.665, "lng": -89.275, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 510000, "alcance": 42000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000017A", "nombre": "Calle Antigua a Huizucar hacia Paso del Jaguar", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Calle Antigua a Huizucar", "referencia": "Hacia Paso del Jaguar", "lat": 13.678, "lng": -89.222, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 480000, "alcance": 39000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000014A", "nombre": "Paseo General Escalón Fte. Colegio Sagrada Familia", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Frente a Colegio Sagrada Familia", "lat": 13.706, "lng": -89.248, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 720000, "alcance": 58000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000012A", "nombre": "Carretera Panamericana Fte. CC Feria Rosa", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Carretera Panamericana", "referencia": "Frente a CC Feria Rosa", "lat": 13.689, "lng": -89.25, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 830000, "alcance": 66000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000011A", "nombre": "San Miguel Av. Roosevelt fte. Omnisport", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Miguel", "direccion": "Av. Roosevelt", "referencia": "Frente a Omnisport", "lat": 13.482, "lng": -88.18, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 690000, "alcance": 55000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000009A", "nombre": "49 Av. Sur fte. Estadio Mágico González", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "49 Avenida Sur", "referencia": "Frente a Estadio Mágico González", "lat": 13.694, "lng": -89.234, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 560000, "alcance": 45000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000001A", "nombre": "Alameda Juan Pablo II Fte. Parque Infantil", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Juan Pablo II", "referencia": "Frente a Parque Infantil", "lat": 13.701, "lng": -89.212, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 740000, "alcance": 59000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000049A", "nombre": "Fte. Ceiba de Guadalupe hacia Hospital El Salvador", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Calle Ceiba de Guadalupe", "referencia": "Hacia Hospital El Salvador", "lat": 13.715, "lng": -89.218, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 610000, "alcance": 49000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000051A", "nombre": "Carretera Panamericana frente a SISA", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Santa Tecla", "direccion": "Carretera Panamericana", "referencia": "Frente a SISA", "lat": 13.676, "lng": -89.282, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 920000, "alcance": 73000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000013A", "nombre": "Carretera Panamericana Hacienda Real", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Carretera Panamericana", "referencia": "Hacienda Real", "lat": 13.67, "lng": -89.272, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 880000, "alcance": 70000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000058A", "nombre": "Paseo General Escalón Fte. Hospital Diagnóstico hacia Masferrer", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Frente a Hospital Diagnóstico", "lat": 13.708, "lng": -89.244, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 660000, "alcance": 53000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000040A", "nombre": "Blvd. Orden de Malta Fte. Plaza Malta", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Blvd. Orden de Malta", "referencia": "Frente a Plaza Malta", "lat": 13.669, "lng": -89.264, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 540000, "alcance": 43000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000057A", "nombre": "La Mascota contiguo a Plaza Las Azaleas", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "La Mascota", "referencia": "Contiguo a Plaza Las Azaleas", "lat": 13.699, "lng": -89.235, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 620000, "alcance": 50000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000054A", "nombre": "Plaza Cristal entrada San Benito hacia Zona Rosa", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Plaza Cristal", "referencia": "Entrada a San Benito hacia Zona Rosa", "lat": 13.694, "lng": -89.229, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 710000, "alcance": 57000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000055A", "nombre": "Final Blvd. Arturo Castellanos fte. Terminal Occidente", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Arturo Castellanos", "referencia": "Frente a Terminal de Occidente", "lat": 13.691, "lng": -89.216, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 590000, "alcance": 47000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000053A", "nombre": "Estadio Cuscatlán antes Gasolinera Texaco Loma Linda", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Estadio Cuscatlán", "referencia": "Antes Gasolinera Texaco Loma Linda", "lat": 13.696, "lng": -89.227, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 680000, "alcance": 54000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000061A", "nombre": "Surf City Carretera Litoral hacia San Blas", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "La Libertad", "direccion": "Carretera Litoral", "referencia": "Hacia San Blas", "lat": 13.49, "lng": -89.32, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 450000, "alcance": 36000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000047A", "nombre": "Av. Masferrer Norte en CC El Amate hacia Redondel Masferrer", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Av. Masferrer Norte", "referencia": "CC El Amate hacia Redondel Masferrer", "lat": 13.7115, "lng": -89.2295, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 780000, "alcance": 62000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000068A", "nombre": "Surf City frente a Malecón", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "La Libertad", "direccion": "Carretera Litoral", "referencia": "Frente a Malecón", "lat": 13.488, "lng": -89.322, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 430000, "alcance": 34000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000067A", "nombre": "Calle El Pedregal y Blvd. Cancillería hacia Gran Vía", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Calle El Pedregal", "referencia": "Hacia Gran Vía", "lat": 13.668, "lng": -89.27, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 510000, "alcance": 41000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000074A", "nombre": "Final Blvd. Constitución 100 mts antes semáforo La Gloria", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Constitución", "referencia": "100 mts antes semáforo La Gloria", "lat": 13.722, "lng": -89.202, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 630000, "alcance": 50000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD000031A", "nombre": "Fte. UFG hacia Salvador del Mundo", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Manuel E. Araujo", "referencia": "Frente a UFG", "lat": 13.7, "lng": -89.23, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 570000, "alcance": 46000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "SVPD00076A", "nombre": "Carretera Del Litoral Frente a Hospital Nacional San Pedro Usulután", "formato": "Pantalla Digital", "proveedor": "JCDecaux", "ciudad": "Usulután", "direccion": "Carretera Del Litoral", "referencia": "Frente a Hospital Nacional San Pedro", "lat": 13.345, "lng": -88.442, "ancho": "1200", "alto": "240", "unidad": "px", "impactos": 380000, "alcance": 30000, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#e05c00", "icono": "📺", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#e05c00\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"8\" width=\"16\" height=\"10\" rx=\"2\" fill=\"white\" opacity=\".95\"/><rect x=\"9\" y=\"10\" width=\"12\" height=\"6\" rx=\"1\" fill=\"#e05c00\" opacity=\".3\"/><rect x=\"13\" y=\"18\" width=\"4\" height=\"2\" rx=\"1\" fill=\"white\" opacity=\".7\"/></svg>", "img": ""}, {"codigo": "131001", "nombre": "49 Avenida Sur", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "49 Avenida Sur", "referencia": "Antes 24 Calle Poniente", "lat": 13.6885, "lng": -89.2345, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 45000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "121004", "nombre": "Blvd. Los Héroes", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Blvd. Los Héroes", "referencia": "Salida del Hospital Bloom", "lat": 13.7095, "lng": -89.2225, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 52000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "111003", "nombre": "75 Avenida Norte", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "75 Avenida Norte", "referencia": "Junto a Despensa Don Juan #1", "lat": 13.7085, "lng": -89.2305, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 41000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "371003", "nombre": "79 Avenida Sur", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "79 Avenida Sur", "referencia": "Frente a Constru-Freud #2", "lat": 13.696, "lng": -89.238, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 38000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "111012", "nombre": "75 Avenida Sur", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "75 Avenida Sur", "referencia": "Antes Plaza Argentina", "lat": 13.693, "lng": -89.231, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 43000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "11006", "nombre": "Alameda Roosevelt", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Roosevelt", "referencia": "Frente a Monumento Monseñor Romero", "lat": 13.7005, "lng": -89.227, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 67000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "21002", "nombre": "Paseo General Escalón Galerías #1", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Acera Galerías #1", "lat": 13.7065, "lng": -89.249, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 55000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "21006", "nombre": "Paseo General Escalón APES #2", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Acera APES #2", "lat": 13.7055, "lng": -89.251, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 48000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "21019", "nombre": "Paseo General Escalón CASALCO #1", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Frente a CASALCO #1", "lat": 13.7045, "lng": -89.253, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 44000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "21017", "nombre": "Paseo General Escalón Galerías #2", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Paseo General Escalón", "referencia": "Frente a Galerías #2", "lat": 13.707, "lng": -89.247, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 51000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "31001", "nombre": "Alameda Manuel Enrique Araujo Pan American Life", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Manuel Enrique Araujo", "referencia": "Junto a Pan American Life #1", "lat": 13.703, "lng": -89.256, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 49000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "31004", "nombre": "Alameda Manuel Enrique Araujo Unidad de Salud", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Manuel Enrique Araujo", "referencia": "Pasando Unidad de Salud Barrios", "lat": 13.7025, "lng": -89.254, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 46000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "11004", "nombre": "Alameda Roosevelt Nash Salvador del Mundo", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Alameda Roosevelt", "referencia": "Junto a Nash Salvador del Mundo", "lat": 13.701, "lng": -89.225, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 72000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "811016", "nombre": "Carretera Panamericana Antiguo Cuscatlán", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "Antiguo Cuscatlán", "direccion": "Carretera Panamericana", "referencia": "Antes Gasolinera Puma El Trébol #1", "lat": 13.666, "lng": -89.276, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 58000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "351007", "nombre": "Avenida Masferrer Starbucks", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Avenida Masferrer", "referencia": "Junto a Starbucks antes 5ª Calle Pte.", "lat": 13.7118, "lng": -89.23, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 39000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}, {"codigo": "SS-16", "nombre": "Centro San Salvador", "formato": "Parada de Bus", "proveedor": "JCDecaux", "ciudad": "San Salvador", "direccion": "Centro Histórico", "referencia": "Área Comercial", "lat": 13.7, "lng": -89.204, "ancho": "1.2", "alto": "2.4", "unidad": "m", "impactos": 80000, "alcance": 0, "precio_semana": "", "semanas": "4", "precio_total": 0.0, "moneda": "", "disponible": "01/04/2026", "color": "#0369a1", "icono": "🚌", "icon_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"36\" viewBox=\"0 0 30 36\"><filter id=\"sh\"><feDropShadow dx=\"0\" dy=\"1\" stdDeviation=\"1.5\" flood-color=\"#0005\"/></filter><path d=\"M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z\" fill=\"#0369a1\" filter=\"url(#sh)\"/><rect x=\"7\" y=\"9\" width=\"16\" height=\"9\" rx=\"2\" fill=\"white\" opacity=\".95\"/><circle cx=\"10.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/><circle cx=\"19.5\" cy=\"21\" r=\"1.8\" fill=\"white\" opacity=\".9\"/></svg>", "img": ""}];
+const RUTAS    = [{"num": "26", "color": "#ef4444", "desc": "San Marcos → San Jacinto → Centro → U. Nacional → Blvd. Constitución → 75 Av. Norte → San Marcos", "pts": [[13.663, -89.192], [13.68, -89.2], [13.7, -89.204], [13.705, -89.208], [13.714, -89.21], [13.721, -89.205], [13.709, -89.228], [13.7, -89.204], [13.663, -89.192]]}, {"num": "5", "color": "#14b8a6", "desc": "Parque Libertad → Calle Circunvalación Antiguo Cuscatlán", "pts": [[13.7, -89.204], [13.692, -89.235], [13.68, -89.27]]}, {"num": "9", "color": "#3b82f6", "desc": "Ciudad Credisa → Blvd. Ejército → Centro → Hospital Bloom → Zacamil", "pts": [[13.72, -89.15], [13.71, -89.19], [13.7, -89.204], [13.71, -89.222], [13.728, -89.21]]}, {"num": "10", "color": "#ca8a04", "desc": "Rancho Navarra → Centro SS → Parque Centenario → Apopa", "pts": [[13.74, -89.208], [13.705, -89.204], [13.7, -89.204], [13.76, -89.195]]}, {"num": "11", "color": "#a855f7", "desc": "San Marcos → Carretera Comalapa → Alameda Juan Pablo II → Metro Centro", "pts": [[13.663, -89.192], [13.68, -89.208], [13.701, -89.212], [13.704, -89.22]]}, {"num": "22", "color": "#f97316", "desc": "Col. San Jacinto → Terminal del Sur → Parque Libertad → Juan Pablo II → San Antonio Abad", "pts": [[13.68, -89.2], [13.7, -89.204], [13.701, -89.212], [13.709, -89.22]]}, {"num": "38C", "color": "#22c55e", "desc": "Apopa → Troncal Norte → Ciudad Delgado → Parque Libertad → Metro Centro", "pts": [[13.76, -89.195], [13.73, -89.198], [13.7, -89.204], [13.704, -89.22], [13.695, -89.23]]}, {"num": "44", "color": "#f43f5e", "desc": "Ayutuxtepeque → Zacamil → U. Nacional → Blvd. Héroes → Terminal Occidente → Estadio Cuscatlán", "pts": [[13.728, -89.21], [13.71, -89.209], [13.704, -89.22], [13.692, -89.216], [13.698, -89.242], [13.682, -89.268]]}, {"num": "34", "color": "#f59e0b", "desc": "Barrio Lourdes → Blvd. Venezuela → Centro → Feria Internacional → Multiplaza", "pts": [[13.7, -89.204], [13.695, -89.22], [13.682, -89.26]]}, {"num": "101D", "color": "#8b5cf6", "desc": "Col. San Antonio → Chiltiupán → Plaza Merliot → Gran Vía → La Mascota → Metro Centro → Santa Tecla", "pts": [[13.673, -89.285], [13.665, -89.275], [13.69, -89.24], [13.699, -89.226], [13.701, -89.212], [13.673, -89.285]]}, {"num": "79", "color": "#06b6d4", "desc": "Parque Bolívar → Paseo Escalón → Av. Manuel E. Araujo → Santa Tecla → Lourdes", "pts": [[13.698, -89.205], [13.706, -89.249], [13.676, -89.282], [13.652, -89.32]]}, {"num": "30B", "color": "#0ea5e9", "desc": "Ayutuxtepeque → U. Nacional → Metro Centro → Paseo Escalón → Zona Rosa → Centro SS", "pts": [[13.728, -89.21], [13.704, -89.22], [13.706, -89.249], [13.69, -89.252], [13.7, -89.204]]}, {"num": "101B", "color": "#ec4899", "desc": "Santa Tecla → Av. Araujo → Alameda Roosevelt → Plaza Centro Histórico", "pts": [[13.676, -89.282], [13.7025, -89.256], [13.701, -89.225], [13.7, -89.204]]}, {"num": "29", "color": "#fb923c", "desc": "Ilopango → Blvd. del Ejército → Av. Independencia → Metro Centro", "pts": [[13.702, -89.128], [13.71, -89.17], [13.7, -89.204], [13.704, -89.22]]}, {"num": "140", "color": "#c084fc", "desc": "San Martín → Plaza Mundo Soyapango → Blvd. Ejército → Excuartel", "pts": [[13.72, -89.11], [13.71, -89.158], [13.7, -89.204]]}, {"num": "7D", "color": "#2dd4bf", "desc": "Col. Guadalupe Soyapango → Terminal Oriente → Juan Pablo II → Blvd. Araujo → Santa Tecla → Galerías Escalón", "pts": [[13.708, -89.145], [13.71, -89.158], [13.701, -89.212], [13.7025, -89.256], [13.676, -89.282], [13.706, -89.249]]}, {"num": "205", "color": "#84cc16", "desc": "Terminal Occidente → Blvd. Venezuela → Terminal Sonsonate", "pts": [[13.692, -89.216], [13.68, -89.27], [13.719, -89.72]]}, {"num": "51", "color": "#fb7185", "desc": "Santa Ana – Col. Altos del Palmar → Av. San Felipe → Centro Santa Ana → Col. San Luis", "pts": [[14.0, -89.57], [13.9952, -89.5584], [14.0, -89.57]]}];
+const FMT_MAP  = {"Pantalla Digital": {"color": "#e05c00", "icono": "📺", "descripcion": "Pantalla LED digital"}, "Parada de Bus": {"color": "#0369a1", "icono": "🚌", "descripcion": "Mueble en parada de bus"}, "Valla": {"color": "#7c3aed", "icono": "🪧", "descripcion": "Valla estática tradicional"}, "Pasarela": {"color": "#be185d", "icono": "🌉", "descripcion": "Publicidad en pasarela peatonal"}, "Back-Bus": {"color": "#16a34a", "icono": "🚍", "descripcion": "Parte trasera de bus"}, "Mupi": {"color": "#ca8a04", "icono": "📋", "descripcion": "Panel informativo en calle"}, "Mupi Elevado": {"color": "#0891b2", "icono": "📌", "descripcion": "Mupi en poste elevado"}, "Pantalla Indoor": {"color": "#7c2d12", "icono": "🖥️", "descripcion": "Pantalla interior de mall"}};
+
+// ── MAP ───────────────────────────────────────────────────────
+const map = L.map('map',{zoomControl:true,attributionControl:false}).setView([13.720,-89.220],12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
+L.control.attribution({prefix:'© <a href="https://www.openstreetmap.org/copyright">OSM</a>'}).addTo(map);
+
+// ── ICONS ────────────────────────────────────────────────────
+function makeIcon(svgStr){
+  return L.divIcon({html:svgStr,className:'',iconSize:[30,36],iconAnchor:[15,36],popupAnchor:[0,-38]});
+}
+
+// ── POPUP ────────────────────────────────────────────────────
+var F="font-family:'DM Sans',sans-serif";
+function fmtNum(n){return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'K':String(n||'–');}
+function fmtMoney(n,m){return n?'$'+Number(n).toLocaleString()+' '+(m||'USD'):'–';}
+
+function mkPopup(item){
+  var img = item.img ? '<img src="'+item.img+'" style="width:100%;height:150px;object-fit:cover;display:block;">' : '';
+  var medidas = (item.ancho&&item.alto) ? item.ancho+'×'+item.alto+' '+item.unidad : '–';
+  return '<div style="'+F+';min-width:270px;max-width:300px;">'
+    +'<div style="background:#1a1a1a;padding:11px 14px 9px;">'
+    +'<div style="color:#e8002d;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">'+item.icono+' '+item.formato+'</div>'
+    +'<div style="color:#fff;font-size:12px;font-weight:700;line-height:1.35;">'+item.nombre+'</div>'
+    +'<div style="color:#aaa;font-size:10px;margin-top:2px;">'+item.codigo+' · '+item.proveedor+' · '+item.ciudad+'</div>'
+    +'</div>'+img
+    +'<div style="padding:10px 14px;background:#f5f5f5;">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">'
+    +'<div style="text-align:center;background:#fff;border-radius:6px;padding:7px;"><div style="font-size:15px;font-weight:800;color:#1a1a1a;">'+fmtNum(item.impactos)+'</div><div style="font-size:9px;color:#6b6b6b;">Impresiones/mes</div></div>'
+    +'<div style="text-align:center;background:#fff;border-radius:6px;padding:7px;"><div style="font-size:15px;font-weight:800;color:#1a1a1a;">'+fmtNum(item.alcance)+'</div><div style="font-size:9px;color:#6b6b6b;">Alcance único</div></div>'
+    +'</div>'
+    +'<table style="width:100%;font-size:10px;color:#374151;border-collapse:collapse;">'
+    +'<tr><td style="color:#6b6b6b;padding:2px 0;">&#128207; Medidas</td><td style="text-align:right;font-weight:600;">'+medidas+'</td></tr>'
+    +'<tr><td style="color:#6b6b6b;padding:2px 0;">&#128197; Disponible</td><td style="text-align:right;font-weight:600;">'+item.disponible+'</td></tr>'
+    +'<tr><td style="color:#6b6b6b;padding:2px 0;">&#128181; Precio/semana</td><td style="text-align:right;font-weight:600;">'+fmtMoney(item.precio_semana,item.moneda)+'</td></tr>'
+    +'<tr><td style="color:#6b6b6b;padding:2px 0;">&#128337; Semanas</td><td style="text-align:right;font-weight:600;">'+item.semanas+'</td></tr>'
+    +'<tr style="border-top:1px solid #e0e0e0;"><td style="color:#1a1a1a;padding:4px 0;font-weight:700;">Total inversión</td><td style="text-align:right;font-weight:800;color:#e8002d;">'+fmtMoney(item.precio_total,item.moneda)+'</td></tr>'
+    +'</table>'
+    +'<div style="margin-top:8px;font-size:10px;color:#6b6b6b;">&#128205; '+item.referencia+'</div>'
+    +'</div></div>';
+}
+
+// ── BUILD MARKERS ────────────────────────────────────────────
+var markerLyrs = {};
+var markerMap  = {};
+var fmtOn      = {};
+
+// Group by format
+var fmtGroups = {};
+OOH.forEach(function(item){
+  if(!fmtGroups[item.formato]) fmtGroups[item.formato] = [];
+  fmtGroups[item.formato].push(item);
+});
+
+// Build legend
+var legendEl = document.getElementById('legend-items');
+Object.keys(fmtGroups).forEach(function(fmt){
+  var color = FMT_MAP[fmt] ? FMT_MAP[fmt].color : '#888';
+  var d = document.createElement('div');
+  d.className = 'leg';
+  d.innerHTML = '<div class="leg-dot" style="background:'+color+'"></div>'+fmt;
+  legendEl.appendChild(d);
+});
+
+// Create layer group per format
+Object.keys(fmtGroups).forEach(function(fmt){
+  var lg = L.layerGroup();
+  markerLyrs[fmt] = lg;
+  markerMap[fmt]  = {};
+  fmtOn[fmt]      = true;
+  fmtGroups[fmt].forEach(function(item){
+    var icon = makeIcon(item.icon_svg);
+    var m = L.marker([item.lat,item.lng],{icon:icon})
+              .bindPopup(mkPopup(item),{maxWidth:310,closeButton:true});
+    m.addTo(lg);
+    markerMap[fmt][item.codigo||item.nombre] = m;
+  });
+  lg.addTo(map);
+});
+
+// ── SIDEBAR FORMAT BLOCKS ────────────────────────────────────
+var fmtBlocksEl = document.getElementById('fmt-blocks');
+Object.keys(fmtGroups).forEach(function(fmt){
+  var color  = FMT_MAP[fmt] ? FMT_MAP[fmt].color : '#888';
+  var items  = fmtGroups[fmt];
+  var safeId = fmt.replace(/[^a-z0-9]/gi,'_');
+
+  var block = document.createElement('div');
+  block.className = 'fmt-block';
+  block.innerHTML =
+    '<div class="fmt-header" onclick="toggleFmtBlock(''+safeId+'')">'
+    +'<div class="fmt-header-left">'
+    +'<div class="fmt-dot" style="background:'+color+'"></div>'
+    +'<span class="fmt-label">'+fmt+'</span>'
+    +'<span class="fmt-count" id="sel-'+safeId+'">('+items.length+')</span>'
+    +'</div>'
+    +'<div class="fmt-controls">'
+    +'<div class="toggle on" onclick="event.stopPropagation();toggleFmt(''+fmt+'',this)"></div>'
+    +'<span class="fmt-chevron" id="chev-'+safeId+'">&#9660;</span>'
+    +'</div></div>'
+    +'<div class="fmt-list" id="list-'+safeId+'"></div>';
+
+  var listEl = block.querySelector('.fmt-list');
+  items.forEach(function(item){
+    var row = document.createElement('div');
+    row.className = 'fmt-item';
+    row.innerHTML = '<input type="checkbox" checked data-fmt="'+fmt+'" data-key="'+(item.codigo||item.nombre)+'">'
+      +'<div class="fmt-item-name"><div>'+item.nombre+'</div>'
+      +'<div class="fmt-item-sub">'+item.ciudad+(item.proveedor?' · '+item.proveedor:'')+'</div></div>';
+    row.querySelector('input').addEventListener('change',function(e){
+      var key=e.target.dataset.key, f=e.target.dataset.fmt;
+      var m=markerMap[f]&&markerMap[f][key];
+      if(m){ if(e.target.checked) m.addTo(markerLyrs[f]); else map.removeLayer(m); }
+      var total=block.querySelectorAll('input:checked').length;
+      document.getElementById('sel-'+safeId).textContent='('+total+'/'+items.length+')';
+    });
+    row.addEventListener('click',function(e){
+      if(e.target.tagName==='INPUT') return;
+      var m=markerMap[fmt]&&markerMap[fmt][item.codigo||item.nombre];
+      if(m){ map.setView([item.lat,item.lng],16); m.openPopup(); }
+    });
+    listEl.appendChild(row);
+  });
+  fmtBlocksEl.appendChild(block);
+});
+
+function toggleFmtBlock(id){
+  var list=document.getElementById('list-'+id);
+  var chev=document.getElementById('chev-'+id);
+  list.classList.toggle('open');
+  if(chev) chev.classList.toggle('open');
+}
+function toggleFmt(fmt,tog){
+  fmtOn[fmt]=!fmtOn[fmt];
+  tog.classList.toggle('on',fmtOn[fmt]);
+  if(fmtOn[fmt]) markerLyrs[fmt].addTo(map); else map.removeLayer(markerLyrs[fmt]);
+}
+
+// ── ROUTES ───────────────────────────────────────────────────
+var routeLyrs={},routeOn={},allRutasOn=true;
+RUTAS.forEach(function(r){
+  var poly=L.polyline(r.pts,{color:r.color,weight:4,opacity:.82})
+    .bindPopup('<div style="'+F+';min-width:220px;"><div style="background:'+r.color+';padding:11px 14px;"><div style="color:#fff;font-size:11px;font-weight:700;">&#128664; Back-Bus · Ruta '+r.num+'</div></div><div style="padding:10px 14px;font-size:11px;color:#374151;background:#fff;line-height:1.7;">'+r.desc+'</div></div>',{maxWidth:300});
+  poly.addTo(map);
+  routeLyrs[r.num]=poly; routeOn[r.num]=true;
+});
+
+var rtDiv=document.getElementById('list-rutas');
+RUTAS.forEach(function(r){
+  var d=document.createElement('div');
+  d.className='fmt-item';
+  d.innerHTML='<input type="checkbox" checked><div class="fmt-item-name"><div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;background:'+r.color+';border-radius:50%;display:inline-block;flex-shrink:0;"></span>Ruta '+r.num+'</div><div class="fmt-item-sub">'+r.desc.substring(0,50)+'...</div></div>';
+  d.querySelector('input').addEventListener('change',function(e){
+    routeOn[r.num]=e.target.checked;
+    if(e.target.checked) routeLyrs[r.num].addTo(map); else map.removeLayer(routeLyrs[r.num]);
+  });
+  rtDiv.appendChild(d);
+});
+
+function toggleFmtBlock(id){
+  var list=document.getElementById('list-'+id);
+  var chev=document.getElementById('chev-'+id);
+  if(list)list.classList.toggle('open');
+  if(chev)chev.classList.toggle('open');
+}
+function toggleAllRutas(tog){
+  allRutasOn=!allRutasOn;
+  tog.classList.toggle('on',allRutasOn);
+  RUTAS.forEach(function(r){
+    routeOn[r.num]=allRutasOn;
+    if(allRutasOn) routeLyrs[r.num].addTo(map); else map.removeLayer(routeLyrs[r.num]);
+  });
+  document.querySelectorAll('#list-rutas input').forEach(function(cb){cb.checked=allRutasOn;});
+}
+
+// ── CONTEXT ──────────────────────────────────────────────────
+var ctxLyrs={},ctxState={};
+var ctxDefs={
+  supermercados:{tag:'shop',    query:'supermarket', emoji:'&#127978;',color:'#16a34a',label:'Supermercado'},
+  farmacias:    {tag:'amenity', query:'pharmacy',    emoji:'&#128138;',color:'#dc2626',label:'Farmacia'},
+  bancos:       {tag:'amenity', query:'bank',        emoji:'&#127981;',color:'#1d4ed8',label:'Banco'},
+  malls:        {tag:'shop',    query:'mall',        emoji:'&#128722;',color:'#7c3aed',label:'C. Comercial'},
+  restaurantes: {tag:'amenity', query:'restaurant',  emoji:'&#127829;',color:'#ea580c',label:'Restaurante'},
+  escuelas:     {tag:'amenity', query:'school',      emoji:'&#127979;',color:'#0891b2',label:'Escuela'},
+  parques:      {tag:'leisure', query:'park',        emoji:'&#127795;',color:'#15803d',label:'Parque'},
+  hospitales:   {tag:'amenity', query:'hospital',    emoji:'&#127973;',color:'#be185d',label:'Hospital'},
+  gasolineras:  {tag:'amenity', query:'fuel',        emoji:'&#9981;',  color:'#b45309',label:'Gasolinera'},
+  oficinas:     {tag:'office',  query:'.',           emoji:'&#127970;',color:'#475569',label:'Oficinas'}
+};
+
+function toggleCtx(name,btn){
+  ctxState[name]=!ctxState[name];
+  document.querySelectorAll('[id="ctx-'+name+'"]').forEach(function(b){b.classList.toggle('on',ctxState[name]);});
+  btn.classList.toggle('on',ctxState[name]);
+  if(!ctxState[name]){ if(ctxLyrs[name]) map.removeLayer(ctxLyrs[name]); return; }
+  loadCtx(name);
+}
+
+function loadCtx(name){
+  var def=ctxDefs[name];
+  var bb='13.50,-89.45,13.90,-89.05';
+  var tq= def.tag==='shop'?'["shop"="'+def.query+'"]':def.tag==='leisure'?'["leisure"="'+def.query+'"]':def.tag==='office'?'["office"~"."]':'["amenity"="'+def.query+'"]';
+  var q='[out:json][timeout:20];(node'+tq+'('+bb+');way'+tq+'('+bb+'););out center 100;';
+  var servers=['https://overpass-api.de/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  function tryServer(i){
+    if(i>=servers.length){showToast('No se pudo cargar: '+name,'#dc2626');return;}
+    var ctrl=new AbortController(); setTimeout(function(){ctrl.abort();},12000);
+    fetch(servers[i]+'?data='+encodeURIComponent(q),{signal:ctrl.signal})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(data){
+        if(ctxLyrs[name]) map.removeLayer(ctxLyrs[name]);
+        var lg=L.layerGroup();
+        var els=data.elements||[],count=0;
+        els.forEach(function(el){
+          var lat=el.lat||(el.center&&el.center.lat);
+          var lon=el.lon||(el.center&&el.center.lon);
+          if(!lat||!lon) return; count++;
+          var icon=L.divIcon({html:'<div style="width:26px;height:26px;background:'+def.color+';border:2.5px solid #fff;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.25);">'+def.emoji+'</div>',className:'',iconSize:[26,26],iconAnchor:[13,13]});
+          var nm=el.tags&&el.tags.name?el.tags.name:'(sin nombre)';
+          L.marker([lat,lon],{icon:icon}).bindPopup('<div style="'+F+';padding:10px 14px;min-width:150px;"><div style="color:'+def.color+';font-size:11px;font-weight:700;margin-bottom:2px;">'+def.emoji+' '+def.label+'</div><b style="font-size:13px;">'+nm+'</b></div>').addTo(lg);
+        });
+        ctxLyrs[name]=lg;
+        if(ctxState[name]) lg.addTo(map);
+        var cc=document.getElementById('cc-'+name); if(cc) cc.textContent=count;
+        if(!count) showToast('Sin resultados para '+name,'#f59e0b');
+      }).catch(function(e){console.warn('Overpass '+i+' failed:',e.message);tryServer(i+1);});
+  }
+  tryServer(0);
+}
+
+// ── HEATMAP ──────────────────────────────────────────────────
+var heatLayer=null,heatOn=false,heatHour=8;
+var TRAFFIC_BASE=[[13.7000,-89.2040,0.9],[13.7010,-89.2120,0.85],[13.7040,-89.2200,0.8],[13.7060,-89.2490,0.75],[13.7025,-89.2560,0.7],[13.7102,-89.2230,0.85],[13.7095,-89.2225,0.8],[13.7200,-89.2050,0.7],[13.6980,-89.2420,0.75],[13.6920,-89.2160,0.8],[13.6940,-89.2290,0.7],[13.6760,-89.2820,0.65],[13.6670,-89.2680,0.75],[13.7100,-89.1580,0.6],[13.7280,-89.2100,0.55],[13.7121,-89.2308,0.8],[13.7085,-89.2305,0.75],[13.7090,-89.2310,0.7],[13.7030,-89.2380,0.65],[13.6960,-89.2400,0.7],[13.6830,-89.2380,0.6],[13.7080,-89.2440,0.7],[13.7065,-89.2490,0.65],[13.7055,-89.2510,0.6],[13.6940,-89.2340,0.7],[13.6910,-89.2160,0.65],[13.6960,-89.2270,0.7],[13.7150,-89.2180,0.6],[13.6890,-89.2350,0.65],[13.6690,-89.2640,0.55],[13.7005,-89.2270,0.75],[13.6885,-89.2345,0.7],[13.7115,-89.2295,0.7]];
+var HOUR_MULT={6:.5,7:.85,8:1.0,12:.75,17:.95,18:1.0,19:.8,22:.3};
+function toggleHeatmap(tog){heatOn=!heatOn;tog.classList.toggle('on',heatOn);document.getElementById('heat-times').style.display=heatOn?'flex':'none';if(heatOn)renderHeat();else{if(heatLayer){map.removeLayer(heatLayer);heatLayer=null;}}}
+function setHeatHour(h,btn){heatHour=h;document.querySelectorAll('.heat-time').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');if(heatOn)renderHeat();}
+function renderHeat(){if(heatLayer)map.removeLayer(heatLayer);var mult=HOUR_MULT[heatHour]||.5;var pts=[];TRAFFIC_BASE.forEach(function(p){pts.push([p[0],p[1],p[2]*mult]);for(var i=0;i<4;i++)pts.push([p[0]+(Math.random()-.5)*.008,p[1]+(Math.random()-.5)*.008,p[2]*(.4+Math.random()*.4)*mult]);});heatLayer=L.heatLayer(pts,{radius:35,blur:25,maxZoom:14,gradient:{.2:'#ffffb2',.4:'#fecc5c',.6:'#fd8d3c',.8:'#f03b20',1:'#bd0026'}}).addTo(map);}
+
+// ── SIDEBAR / DRAWER ─────────────────────────────────────────
+var sidebarOpen=true;
+function toggleSidebar(){sidebarOpen=!sidebarOpen;document.getElementById('sidebar').classList.toggle('collapsed',!sidebarOpen);}
+function switchTab(name){var tabs=['resumen','formatos','contexto','journey'];document.querySelectorAll('.sidebar-tabs .stab').forEach(function(t,i){t.classList.toggle('active',tabs[i]===name);});document.querySelectorAll('.sidebar-panel').forEach(function(p){p.classList.remove('active');});document.getElementById('tab-'+name).classList.add('active');}
+function openDrawer(){document.getElementById('drawer').classList.add('open');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');}
+function switchDrawerTab(id){['dr','dc','dj'].forEach(function(i){document.getElementById(i).style.display='none';});document.getElementById(id).style.display='block';}
+
+// ── GEOCODING ────────────────────────────────────────────────
+var sugTimers={};
+function geocodeSuggest(input,sugId){var q=input.value.trim(),sd=document.getElementById(sugId);if(q.length<3){sd.innerHTML='';sd.style.display='none';return;}clearTimeout(sugTimers[sugId]);sugTimers[sugId]=setTimeout(function(){fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(q+', El Salvador')+'&format=json&limit=5').then(function(r){return r.json();}).then(function(res){sd.innerHTML='';if(!res.length){sd.style.display='none';return;}sd.style.display='block';res.forEach(function(r){var d=document.createElement('div');d.className='sug-item';d.textContent=r.display_name.substring(0,60)+'…';d.addEventListener('click',function(){input.value=r.display_name.substring(0,60);input.dataset.lat=r.lat;input.dataset.lng=r.lon;sd.style.display='none';checkJourneyReady();});sd.appendChild(d);});});},400);}
+
+// ── JOURNEY ──────────────────────────────────────────────────
+var journeyLayer=null,journeyMarkers=[],pickingMode=null;
+var iconOrigin=L.divIcon({html:'<div style="width:18px;height:18px;background:#e8002d;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',className:'',iconSize:[18,18],iconAnchor:[9,9]});
+var iconDest=L.divIcon({html:'<div style="width:18px;height:18px;background:#16a34a;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3)"></div>',className:'',iconSize:[18,18],iconAnchor:[9,9]});
+
+function startPicking(type){pickingMode=type;var ind=document.getElementById('pick-indicator');ind.textContent='Click en el mapa para marcar el '+(type==='origin'?'ORIGEN':'DESTINO');ind.style.display='block';map.getContainer().style.cursor='crosshair';}
+map.on('click',function(e){if(!pickingMode)return;var lat=e.latlng.lat,lng=e.latlng.lng;fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json').then(function(r){return r.json();}).then(function(d){setJourneyInput(pickingMode,d.display_name?d.display_name.substring(0,60):'Punto seleccionado',lat,lng);}).catch(function(){setJourneyInput(pickingMode,'Punto seleccionado',lat,lng);});journeyMarkers.forEach(function(m){if(m._pt===pickingMode)map.removeLayer(m);});journeyMarkers=journeyMarkers.filter(function(m){return m._pt!==pickingMode;});var mk=L.marker([lat,lng],{icon:pickingMode==='origin'?iconOrigin:iconDest});mk._pt=pickingMode;mk.addTo(map);journeyMarkers.push(mk);pickingMode=null;document.getElementById('pick-indicator').style.display='none';map.getContainer().style.cursor='';checkJourneyReady();});
+
+function setJourneyInput(type,name,lat,lng){['j-'+type,'dj-'+type].forEach(function(id){var el=document.getElementById(id);if(el){el.value=name;el.dataset.lat=lat;el.dataset.lng=lng;}});}
+function checkJourneyReady(){var o=document.getElementById('j-origin'),d=document.getElementById('j-dest');document.getElementById('j-go-btn').disabled=!(o&&o.dataset.lat&&d&&d.dataset.lat);}
+function syncMobileJourney(){['origin','dest'].forEach(function(t){var mob=document.getElementById('dj-'+t),desk=document.getElementById('j-'+t);if(mob&&mob.dataset.lat&&desk){desk.value=mob.value;desk.dataset.lat=mob.dataset.lat;desk.dataset.lng=mob.dataset.lng;}});}
+
+function calcJourney(){
+  var o=document.getElementById('j-origin'),d=document.getElementById('j-dest');
+  if(!o||!o.dataset.lat||!d||!d.dataset.lat){showToast('Selecciona origen y destino','#dc2626');return;}
+  var oLat=parseFloat(o.dataset.lat),oLng=parseFloat(o.dataset.lng),dLat=parseFloat(d.dataset.lat),dLng=parseFloat(d.dataset.lng);
+  var btn=document.getElementById('j-go-btn');btn.textContent='Calculando...';btn.disabled=true;
+  var servers=['https://router.project-osrm.org/route/v1/driving/','https://routing.openstreetmap.de/routed-car/route/v1/driving/'];
+  function tryRoute(i){if(i>=servers.length){btn.textContent='&#128694; Calcular Journey';btn.disabled=false;showStraightLine(oLat,oLng,dLat,dLng);return;}
+    var ctrl=new AbortController();setTimeout(function(){ctrl.abort();},8000);
+    fetch(servers[i]+oLng+','+oLat+';'+dLng+','+dLat+'?overview=full&geometries=geojson',{signal:ctrl.signal}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(data){
+      btn.textContent='&#128694; Calcular Journey';btn.disabled=false;
+      if(!data.routes||!data.routes.length)throw new Error('No route');
+      var route=data.routes[0],coords=route.geometry.coordinates.map(function(c){return[c[1],c[0]];});
+      if(journeyLayer)map.removeLayer(journeyLayer);
+      journeyLayer=L.layerGroup();
+      L.polyline(coords,{color:'#e8002d',weight:5,opacity:.85,dashArray:'10,6'}).addTo(journeyLayer);
+      journeyLayer.addTo(map);
+      map.fitBounds(L.polyline(coords).getBounds(),{padding:[40,40]});
+      processHits(coords,(route.distance/1000).toFixed(1),Math.round(route.duration/60)+'min',oLat,oLng);
+    }).catch(function(e){console.warn('Route '+i+' failed:',e.message);tryRoute(i+1);});
+  }
+  tryRoute(0);
+}
+
+function processHits(coords,distKm,durStr,oLat,oLng){
+  var hits=[];
+  OOH.forEach(function(item){
+    var minD=Infinity;
+    coords.forEach(function(c){var d=Math.sqrt(Math.pow((c[0]-item.lat)*111000,2)+Math.pow((c[1]-item.lng)*85000,2));if(d<minD)minD=d;});
+    if(minD<280)hits.push({item:item,dist:Math.round(minD)});
+  });
+  hits.sort(function(a,b){return Math.sqrt(Math.pow(a.item.lat-oLat,2)+Math.pow(a.item.lng-oLng,2))-Math.sqrt(Math.pow(b.item.lat-oLat,2)+Math.pow(b.item.lng-oLng,2));});
+  var totalImp=hits.reduce(function(s,h){return s+h.item.impactos;},0);
+  hits.forEach(function(h){if(journeyLayer)L.circleMarker([h.item.lat,h.item.lng],{radius:14,color:'#e8002d',weight:3,fillColor:'#fecdd3',fillOpacity:.6}).addTo(journeyLayer);});
+  renderResults(hits,distKm,durStr,totalImp);
+}
+
+function showStraightLine(oLat,oLng,dLat,dLng){
+  showToast('Usando línea directa (sin internet)','#f59e0b');
+  if(journeyLayer)map.removeLayer(journeyLayer);
+  journeyLayer=L.layerGroup();
+  L.polyline([[oLat,oLng],[dLat,dLng]],{color:'#e8002d',weight:4,opacity:.7,dashArray:'12,8'}).addTo(journeyLayer);
+  journeyLayer.addTo(map);
+  map.fitBounds([[oLat,oLng],[dLat,dLng]],{padding:[60,60]});
+  var distKm=Math.sqrt(Math.pow((dLat-oLat)*111,2)+Math.pow((dLng-oLng)*85,2)).toFixed(1);
+  processHitsLine(oLat,oLng,dLat,dLng,distKm);
+}
+
+function processHitsLine(oLat,oLng,dLat,dLng,distKm){
+  var hits=[];
+  OOH.forEach(function(item){
+    var dx=dLat-oLat,dy=dLng-oLng,t=Math.max(0,Math.min(1,((item.lat-oLat)*dx+(item.lng-oLng)*dy)/(dx*dx+dy*dy)));
+    var d=Math.sqrt(Math.pow((item.lat-(oLat+t*dx))*111000,2)+Math.pow((item.lng-(oLng+t*dy))*85000,2));
+    if(d<400)hits.push({item:item,dist:Math.round(d)});
+  });
+  hits.sort(function(a,b){return Math.sqrt(Math.pow(a.item.lat-oLat,2)+Math.pow(a.item.lng-oLng,2))-Math.sqrt(Math.pow(b.item.lat-oLat,2)+Math.pow(b.item.lng-oLng,2));});
+  var totalImp=hits.reduce(function(s,h){return s+h.item.impactos;},0);
+  hits.forEach(function(h){if(journeyLayer)L.circleMarker([h.item.lat,h.item.lng],{radius:14,color:'#e8002d',weight:3,fillColor:'#fecdd3',fillOpacity:.6}).addTo(journeyLayer);});
+  renderResults(hits,distKm,'~estimado',totalImp);
+  var btn=document.getElementById('j-go-btn');btn.textContent='&#128694; Calcular Journey';btn.disabled=false;
+}
+
+function renderResults(hits,distKm,durStr,totalImp){
+  var res=document.getElementById('journey-results');res.classList.add('show');switchTab('journey');
+  document.getElementById('j-metrics').innerHTML=
+    '<div class="j-metric"><div class="val">'+distKm+'<span style="font-size:10px;">km</span></div><div class="lbl">Distancia</div></div>'
+    +'<div class="j-metric"><div class="val">'+hits.length+'</div><div class="lbl">Formatos</div></div>'
+    +'<div class="j-metric" style="grid-column:span 2;"><div class="val" style="color:#e8002d;">'+fmtNum(totalImp)+'</div><div class="lbl">Impresiones/mes en ruta</div></div>';
+  var list=document.getElementById('j-hits-list');list.innerHTML='';
+  if(!hits.length){list.innerHTML='<div style="font-size:12px;color:#6b6b6b;text-align:center;padding:16px;">Sin formatos OOH en esta ruta.</div>';return;}
+  hits.forEach(function(h,i){
+    var d=document.createElement('div');d.className='j-hit';
+    d.innerHTML='<div class="j-hit-order">'+(i+1)+'</div><div class="j-hit-icon">'+h.item.icono+'</div>'
+      +'<div class="j-hit-info"><div class="j-hit-name">'+h.item.nombre+'</div>'
+      +'<div class="j-hit-dist">~'+h.dist+'m · '+fmtNum(h.item.impactos)+'/mes</div></div>';
+    d.addEventListener('click',function(){map.setView([h.item.lat,h.item.lng],16);});
+    list.appendChild(d);
+  });
+}
+
+function clearJourney(){
+  if(journeyLayer){map.removeLayer(journeyLayer);journeyLayer=null;}
+  journeyMarkers.forEach(function(m){map.removeLayer(m);});journeyMarkers=[];
+  document.getElementById('journey-results').classList.remove('show');
+  ['j-origin','j-dest','dj-origin','dj-dest'].forEach(function(id){var el=document.getElementById(id);if(el){el.value='';delete el.dataset.lat;delete el.dataset.lng;}});
+  document.getElementById('j-go-btn').disabled=true;
+  map.setView([13.720,-89.220],12);
+}
+
+// ── TOAST ────────────────────────────────────────────────────
+function showToast(msg,color){var t=document.getElementById('_toast');if(!t){t=document.createElement('div');t.id='_toast';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);color:#fff;padding:10px 20px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .3s;font-family:DM Sans,sans-serif;pointer-events:none;';document.body.appendChild(t);}t.style.background=color||'#1a1a1a';t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(function(){t.style.opacity='0';},3500);}
+</script>
+</body>
+</html>
